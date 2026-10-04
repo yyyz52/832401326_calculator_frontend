@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>粉色计算器</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Microsoft YaHei", sans-serif;
+    background: linear-gradient(135deg, #ffdde1 0%, #ee9ca7 50%, #ffb6c1 100%);
+    display: flex;
+    justify-content: center;
+    padding: 30px;
+    margin: 0;
+    min-height: 100vh;
+  }
+  .container {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+
+  /* ===== 计算器主体 ===== */
+  .calc {
+    width: 380px;
+    background: #fff;
+    border-radius: 24px;
+    padding: 22px;
+    box-shadow: 0 12px 40px rgba(238, 156, 167, 0.5);
+    position: relative;
+  }
+  .lang-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    font-size: 13px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #ff8fab, #ff5c8d);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    box-shadow: 0 3px 8px rgba(238, 156, 167, 0.4);
+    transition: 0.15s;
+  }
+  .lang-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  h1 {
+    text-align: center;
+    background: linear-gradient(90deg, #ff6b9d, #c44569);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0 0 15px 0;
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 2px;
+  }
+
+  /* ===== 显示屏 ===== */
+  .screen {
+    background: linear-gradient(135deg, #ffeef2, #ffd9e0);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 18px;
+    min-height: 110px;
+    text-align: right;
+    overflow-wrap: break-word;
+    box-shadow: inset 0 4px 10px rgba(238, 156, 167, 0.25);
+    border: 2px solid #ffd0da;
+  }
+  .expression {
+    font-size: 18px;
+    color: #c98a99;
+    min-height: 24px;
+    word-break: break-all;
+  }
+  .result {
+    font-size: 34px;
+    color: #ff4d79;
+    font-weight: bold;
+    margin-top: 8px;
+    min-height: 42px;
+    word-break: break-all;
+    text-shadow: 0 0 12px rgba(255, 77, 121, 0.3);
+    cursor: pointer;
+    transition: 0.15s;
+    border-radius: 8px;
+  }
+  .result:hover { background: rgba(255,255,255,0.6); }
+  .error {
+    font-size: 14px;
+    color: #e74c3c;
+    margin-top: 5px;
+    min-height: 20px;
+  }
+
+  /* ===== 按钮网格 ===== */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+  .btn {
+    font-size: 20px;
+    padding: 18px 0;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+    font-weight: 600;
+    color: #fff;
+    box-shadow: 0 4px 10px rgba(238, 156, 167, 0.3);
+  }
+  .btn:hover { filter: brightness(1.06); transform: translateY(-2px); }
+  .btn:active { transform: scale(0.94); box-shadow: 0 1px 3px rgba(238, 156, 167, 0.3); }
+
+  .btn.num   { background: linear-gradient(135deg, #ffc2d1, #ff9bb3); }
+  .btn.op    { background: linear-gradient(135deg, #ff6b9d, #e84393); }
+  .btn.func  { background: linear-gradient(135deg, #d8a7ff, #b57edc); }
+  .btn.clear { background: linear-gradient(135deg, #ff4757, #c44569); }
+  .btn.equal {
+    background: linear-gradient(135deg, #ff8fab, #ff5c8d);
+    grid-column: span 2;
+  }
+
+  /* ===== 历史记录 ===== */
+  .history-box {
+    width: 340px;
+    background: #fff;
+    border-radius: 24px;
+    padding: 20px;
+    box-shadow: 0 12px 40px rgba(238, 156, 167, 0.5);
+    max-height: 740px;
+    display: flex;
+    flex-direction: column;
+  }
+  .history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 17px;
+    font-weight: bold;
+    color: #c44569;
+    border-bottom: 2px solid #ffe0e7;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+  }
+  .history-actions {
+    display: flex;
+    gap: 6px;
+    font-weight: normal;
+    font-size: 13px;
+  }
+  .history-actions span {
+    color: #ff6b9d;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 8px;
+    transition: 0.15s;
+  }
+  .history-actions span:hover { background: #ffe0e7; }
+  .history-actions .danger { color: #e74c3c; }
+  .history-actions .danger:hover { background: #ffe0e0; }
+
+  .history-count {
+    font-size: 12px;
+    color: #c98a99;
+    text-align: right;
+    margin-bottom: 6px;
+  }
+  .history-list {
+    overflow-y: auto;
+    padding-right: 4px;
+    max-height: 340px;
+  }
+  .history-list::-webkit-scrollbar { width: 6px; }
+  .history-list::-webkit-scrollbar-thumb {
+    background: #ffc2d1;
+    border-radius: 3px;
+  }
+  .history-item {
+    padding: 10px 12px;
+    border-radius: 12px;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff5f8;
+    border-left: 4px solid #ff9bb3;
+    transition: 0.15s;
+  }
+  .history-item:hover {
+    background: #ffe8ef;
+    transform: translateX(2px);
+  }
+  .history-item .info {
+    font-size: 15px;
+    color: #7a4a56;
+    font-weight: 600;
+  }
+  .history-item .info .res { color: #e84393; }
+  .history-item .time {
+    font-size: 12px;
+    color: #b39199;
+    margin-top: 3px;
+  }
+  .del {
+    color: #e84393;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: 0.15s;
+  }
+  .del:hover { background: #ffd6e0; }
+  .empty {
+    color: #c98a99;
+    text-align: center;
+    padding: 30px 0;
+    font-size: 14px;
+  }
+
+  /* ===== Hello Kitty ===== */
+  .kitty-wrap {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+    animation: kitty-bounce 2.5s ease-in-out infinite;
+  }
+  @keyframes kitty-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+  }
+  .kitty-img {
+    width: 130px;
+    height: auto;
+    filter: drop-shadow(0 4px 8px rgba(238, 156, 167, 0.4));
+  }
+
+  /* ===== 提示条 ===== */
+  .toast {
+    position: fixed;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: rgba(232, 67, 147, 0.95);
+    color: #fff;
+    padding: 10px 24px;
+    border-radius: 20px;
+    font-size: 14px;
+    opacity: 0;
+    transition: 0.3s;
+    pointer-events: none;
+    z-index: 999;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- 计算器 -->
+  <div class="calc">
+    <button class="lang-btn" id="langBtn" onclick="toggleLang()">EN</button>
+    <h1 id="titleText">🌸 计算器 🌸</h1>
+
+    <div class="screen">
+      <div class="expression" id="exprDisplay"></div>
+      <div class="result" id="resultDisplay" onclick="copyResult()"></div>
+      <div class="error" id="errorDisplay"></div>
+    </div>
+
+    <div class="grid">
+      <button class="btn clear" onclick="press('C')">C</button>
+      <button class="btn func" onclick="press('(')">(</button>
+      <button class="btn func" onclick="press(')')">)</button>
+      <button class="btn op" onclick="press('÷')">÷</button>
+
+      <button class="btn num" onclick="press('7')">7</button>
+      <button class="btn num" onclick="press('8')">8</button>
+      <button class="btn num" onclick="press('9')">9</button>
+      <button class="btn op" onclick="press('×')">×</button>
+
+      <button class="btn num" onclick="press('4')">4</button>
+      <button class="btn num" onclick="press('5')">5</button>
+      <button class="btn num" onclick="press('6')">6</button>
+      <button class="btn op" onclick="press('-')">−</button>
+
+      <button class="btn num" onclick="press('1')">1</button>
+      <button class="btn num" onclick="press('2')">2</button>
+      <button class="btn num" onclick="press('3')">3</button>
+      <button class="btn op" onclick="press('+')">+</button>
+
+      <button class="btn num" onclick="press('0')">0</button>
+      <button class="btn num" onclick="press('.')">.</button>
+      <button class="btn func" onclick="backspace()">⌫</button>
+      <button class="btn equal" onclick="calculate()">=</button>
+    </div>
+  </div>
+
+  <!-- 历史记录 + Kitty -->
+  <div class="history-box">
+    <div class="history-header">
+      <span id="historyTitle">历史记录</span>
+      <div class="history-actions">
+        <span onclick="loadHistory()" id="refreshBtn">刷新</span>
+        <span class="danger" onclick="clearAllHistory()" id="clearAllBtn">清空</span>
+      </div>
+    </div>
+    <div class="history-count" id="historyCount"></div>
+    <div class="history-list" id="historyList"></div>
+
+    <div class="kitty-wrap">
+      <img src="kitty.png" alt="Hello Kitty" class="kitty-img">
+    </div>
+  </div>
+
+</div>
+
+<!-- 提示条 -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://127.0.0.1:5000';
+let currentExpr = '';
+
+// ===== 中英文文案 =====
+const langData = {
+  zh: {
+    title: '🌸 计算器 🌸',
+    langBtn: 'EN',
+    historyTitle: '历史记录',
+    refresh: '刷新',
+    clearAll: '清空',
+    count: (n) => `共 ${n} 条记录`,
+    empty: '暂无历史记录',
+    noExpr: '请输入表达式',
+    connecting: '计算中...',
+    cannotConnect: '无法连接后端，请检查后端是否启动',
+    confirmDelete: '确定删除这条记录吗？',
+    confirmClearAll: '确定清空全部历史记录吗？此操作不可恢复！',
+    deleteSuccess: '删除成功',
+    clearSuccess: '已清空全部历史',
+    copied: '结果已复制到剪贴板',
+    noResult: '还没有结果可复制',
+    deleteFail: '删除失败，请检查后端'
+  },
+  en: {
+    title: '🌸 Calculator 🌸',
+    langBtn: '中',
+    historyTitle: 'History',
+    refresh: 'Refresh',
+    clearAll: 'Clear',
+    count: (n) => `${n} record${n > 1 ? 's' : ''}`,
+    empty: 'No history yet',
+    noExpr: 'Please enter an expression',
+    connecting: 'Calculating...',
+    cannotConnect: 'Cannot connect to backend. Please check if it is running.',
+    confirmDelete: 'Delete this record?',
+    confirmClearAll: 'Clear ALL history? This cannot be undone!',
+    deleteSuccess: 'Deleted',
+    clearSuccess: 'All history cleared',
+    copied: 'Result copied to clipboard',
+    noResult: 'No result to copy',
+    deleteFail: 'Delete failed, please check backend'
+  }
+};
+
+let currentLang = 'zh';
+function t(key) { return langData[currentLang][key]; }
+
+// 切换语言
+function toggleLang() {
+  currentLang = currentLang === 'zh' ? 'en' : 'zh';
+  applyLang();
+}
+
+function applyLang() {
+  document.getElementById('titleText').innerText = t('title');
+  document.getElementById('langBtn').innerText = t('langBtn');
+  document.getElementById('historyTitle').innerText = t('historyTitle');
+  document.getElementById('refreshBtn').innerText = t('refresh');
+  document.getElementById('clearAllBtn').innerText = t('clearAll');
+  document.documentElement.lang = currentLang === 'zh' ? 'zh-CN' : 'en';
+  updateHistoryCount();
+  loadHistory();
+}
+
+// ===== 显示屏 =====
+function updateDisplay() {
+  document.getElementById('exprDisplay').innerText = currentExpr || '0';
+  document.getElementById('errorDisplay').innerText = '';
+}
+
+function press(ch) {
+  document.getElementById('errorDisplay').innerText = '';
+  document.getElementById('resultDisplay').innerText = '';
+  if (ch === 'C') {
+    currentExpr = '';
+    updateDisplay();
+    return;
+  }
+  currentExpr += ch;
+  updateDisplay();
+}
+
+function backspace() {
+  currentExpr = currentExpr.slice(0, -1);
+  updateDisplay();
+}
+
+// ===== 计算 =====
+async function calculate() {
+  const expr = currentExpr.trim();
+  if (!expr) {
+    showToast(t('noExpr'));
+    return;
+  }
+  const backendExpr = expr.replace(/×/g, '*').replace(/÷/g, '/');
+  document.getElementById('errorDisplay').innerText = '';
+  document.getElementById('resultDisplay').innerText = t('connecting');
+
+  try {
+    const res = await fetch(API + '/api/calculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ expression: backendExpr })
+    });
+    const data = await res.json();
+    if (data.success) {
+      document.getElementById('resultDisplay').innerText = '= ' + data.result;
+      loadHistory();
+    } else {
+      document.getElementById('resultDisplay').innerText = '';
+      document.getElementById('errorDisplay').innerText = data.message;
+    }
+  } catch (e) {
+    document.getElementById('resultDisplay').innerText = '';
+    document.getElementById('errorDisplay').innerText = t('cannotConnect');
+  }
+}
+
+// ===== 复制结果 =====
+function copyResult() {
+  const text = document.getElementById('resultDisplay').innerText;
+  if (!text || text.startsWith('=') === false) {
+    showToast(t('noResult'));
+    return;
+  }
+  const value = text.replace('=', '').trim();
+  navigator.clipboard.writeText(value).then(() => {
+    showToast(t('copied'));
+  }).catch(() => {
+    // 兼容旧浏览器
+    const ta = document.createElement('textarea');
+    ta.value = value;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast(t('copied'));
+  });
+}
+
+// ===== 历史记录 =====
+let historyCountCache = 0;
+
+async function loadHistory() {
+  try {
+    const res = await fetch(API + '/api/history');
+    const data = await res.json();
+    const list = document.getElementById('historyList');
+    if (!data.success || data.history.length === 0) {
+      list.innerHTML = `<div class="empty">${t('empty')}</div>`;
+      historyCountCache = 0;
+      updateHistoryCount();
+      return;
+    }
+    historyCountCache = data.history.length;
+    updateHistoryCount();
+    list.innerHTML = data.history.map(item => `
+      <div class="history-item">
+        <div>
+          <div class="info">${item.expression} = <span class="res">${item.result}</span></div>
+          <div class="time">${item.created_at}</div>
+        </div>
+        <span class="del" onclick="delHistory(${item.id})">${currentLang === 'zh' ? '删除' : 'Del'}</span>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function updateHistoryCount() {
+  document.getElementById('historyCount').innerText = t('count')(historyCountCache);
+}
+
+async function delHistory(id) {
+  if (!confirm(t('confirmDelete'))) return;
+  try {
+    const res = await fetch(API + '/api/history/' + id, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(t('deleteSuccess'));
+      loadHistory();
+    } else {
+      showToast(t('deleteFail'));
+    }
+  } catch (e) {
+    showToast(t('deleteFail'));
+  }
+}
+
+// ===== 清空全部 =====
+async function clearAllHistory() {
+  if (historyCountCache === 0) return;
+  if (!confirm(t('confirmClearAll'))) return;
+  try {
+    const res = await fetch(API + '/api/history', { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(t('clearSuccess'));
+      loadHistory();
+    }
+  } catch (e) {
+    showToast(t('deleteFail'));
+  }
+}
+
+// ===== 提示条 =====
+let toastTimer = null;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.innerText = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 1800);
+}
+
+// ===== 键盘 =====
+document.addEventListener('keydown', e => {
+  const k = e.key;
+  if (/[0-9+\-*/().]/.test(k)) {
+    if (k === '*') press('×');
+    else if (k === '/') press('÷');
+    else press(k);
+  } else if (k === 'Enter' || k === '=') {
+    calculate();
+  } else if (k === 'Backspace') {
+    backspace();
+  } else if (k === 'Escape') {
+    press('C');
+  }
+});
+
+window.onload = () => {
+  updateDisplay();
+  loadHistory();
+};
+</script>
+</body>
+</html>
