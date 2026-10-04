@@ -347,7 +347,9 @@ const langData = {
     clearSuccess: '已清空全部历史',
     copied: '结果已复制到剪贴板',
     noResult: '还没有结果可复制',
-    deleteFail: '删除失败，请检查后端'
+    deleteFail: '删除失败，请检查后端',
+    invalid: '无效表达式',
+    del: '删除'
   },
   en: {
     title: '🌸 Calculator 🌸',
@@ -355,7 +357,7 @@ const langData = {
     historyTitle: 'History',
     refresh: 'Refresh',
     clearAll: 'Clear',
-    count: (n) => `${n} record${n > 1 ? 's' : ''}`,
+    count: (n) => `${n} record${n === 1 ? '' : 's'}`,
     empty: 'No history yet',
     noExpr: 'Please enter an expression',
     connecting: 'Calculating...',
@@ -366,7 +368,9 @@ const langData = {
     clearSuccess: 'All history cleared',
     copied: 'Result copied to clipboard',
     noResult: 'No result to copy',
-    deleteFail: 'Delete failed, please check backend'
+    deleteFail: 'Delete failed, please check backend',
+    invalid: 'Invalid expression',
+    del: 'Del'
   }
 };
 
@@ -413,6 +417,44 @@ function backspace() {
   updateDisplay();
 }
 
+// ===== 前端语法预检查 =====
+function preCheck(expr) {
+  const s = expr.replace(/\s/g, '');
+
+  // 1) 连续两个运算符，除非第二个是紧跟 ( * / + - 之后的一元正负号
+  for (let i = 1; i < s.length; i++) {
+    const a = s[i - 1], b = s[i];
+    if ('+-*/'.includes(a) && '+-*/'.includes(b)) {
+      if ('+-'.includes(b) && '(*/+-'.includes(a)) {
+        continue; // b 是一元正负号
+      }
+      return false;
+    }
+  }
+
+  // 2) 括号必须配对
+  let depth = 0;
+  for (const ch of s) {
+    if (ch === '(') depth++;
+    else if (ch === ')') {
+      depth--;
+      if (depth < 0) return false;
+    }
+  }
+  if (depth !== 0) return false;
+
+  // 3) 不允许空括号
+  if (s.includes('()')) return false;
+
+  // 4) 左括号后不能直接是 * /；运算符后不能直接接 )
+  if (/[(][*/]/.test(s) || /[+\-*/][)]/.test(s)) return false;
+
+  // 5) 不能以运算符结尾
+  if (s && '+-*/'.includes(s[s.length - 1])) return false;
+
+  return true;
+}
+
 // ===== 计算 =====
 async function calculate() {
   const expr = currentExpr.trim();
@@ -420,6 +462,14 @@ async function calculate() {
     showToast(t('noExpr'));
     return;
   }
+
+  // 前端预检查
+  if (!preCheck(expr)) {
+    document.getElementById('resultDisplay').innerText = '';
+    document.getElementById('errorDisplay').innerText = t('invalid');
+    return;
+  }
+
   const backendExpr = expr.replace(/×/g, '*').replace(/÷/g, '/');
   document.getElementById('errorDisplay').innerText = '';
   document.getElementById('resultDisplay').innerText = t('connecting');
@@ -447,7 +497,7 @@ async function calculate() {
 // ===== 复制结果 =====
 function copyResult() {
   const text = document.getElementById('resultDisplay').innerText;
-  if (!text || text.startsWith('=') === false) {
+  if (!text || !text.startsWith('=')) {
     showToast(t('noResult'));
     return;
   }
@@ -455,7 +505,6 @@ function copyResult() {
   navigator.clipboard.writeText(value).then(() => {
     showToast(t('copied'));
   }).catch(() => {
-    // 兼容旧浏览器
     const ta = document.createElement('textarea');
     ta.value = value;
     document.body.appendChild(ta);
@@ -488,7 +537,7 @@ async function loadHistory() {
           <div class="info">${item.expression} = <span class="res">${item.result}</span></div>
           <div class="time">${item.created_at}</div>
         </div>
-        <span class="del" onclick="delHistory(${item.id})">${currentLang === 'zh' ? '删除' : 'Del'}</span>
+        <span class="del" onclick="delHistory(${item.id})">${t('del')}</span>
       </div>
     `).join('');
   } catch (e) {
